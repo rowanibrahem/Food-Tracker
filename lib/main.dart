@@ -62,6 +62,26 @@ class DayCubit extends Cubit<DayState> {
     await day.save();
     loadDays();
   }
+Future addDrink(int dayIndex, Drink drink) async {
+    final day = box!.getAt(dayIndex);
+    day!.drinks.add(drink);
+    await day.save();
+    loadDays();
+  }
+
+  Future editDrink(int dayIndex, int drinkIndex, Drink updatedDrink) async {
+    final day = box!.getAt(dayIndex);
+    day!.drinks[drinkIndex] = updatedDrink;
+    await day.save();
+    loadDays();
+  }
+
+  Future deleteDrink(int dayIndex, int drinkIndex) async {
+    final day = box!.getAt(dayIndex);
+    day!.drinks.removeAt(drinkIndex);
+    await day.save();
+    loadDays();
+  }
 }
 
 // -------------------- MAIN APP --------------------
@@ -71,6 +91,7 @@ void main() async {
   
   Hive.registerAdapter(MealAdapter());
   Hive.registerAdapter(DayModelAdapter());
+  Hive.registerAdapter(DrinkAdapter());
   
 
   runApp(MyApp());
@@ -266,132 +287,193 @@ class DayDetailsPage extends StatelessWidget {
 
         return Scaffold(
           appBar: AppBar(title: Text(day.date)),
-          floatingActionButton: FloatingActionButton(
-            child: Icon(Icons.add),
-            onPressed: () {
-              Navigator.push(context, MaterialPageRoute(
-                builder: (_) => AddMealPage(dayIndex: dayIndex)
-              ));
-            },
-          ),
-          body: Column(
+          floatingActionButton: Column(
+            mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // Water Tracker
-              Container(
-                margin: EdgeInsets.all(16),
-                padding: EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.blue[50],
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Column(
-                  children: [
-                    Text('Water Tracker 💧', style: TextStyle(
-                      fontSize: 20, 
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue[700]
-                    )),
-                    SizedBox(height: 10),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.remove_circle, color: Colors.blue),
-                          onPressed: () {
-                            if (day.waterCups > 0) cubit.updateWater(dayIndex, day.waterCups - 1);
-                          },
-                        ),
-                        Container(
-                          padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text('${day.waterCups} cups', style: TextStyle(
-                            fontSize: 18, 
-                            fontWeight: FontWeight.bold
-                          )),
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.add_circle, color: Colors.blue),
-                          onPressed: () {
-                            cubit.updateWater(dayIndex, day.waterCups + 1);
-                          },
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+              // زر إضافة مشروب
+              FloatingActionButton(
+                heroTag: 'add_drink', // مهم علشان متكنش في مشاكل مع الأنيشيشن
+                mini: true,
+                child: Icon(Icons.local_drink, size: 20),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => AddDrinkPage(
+                      dayIndex: dayIndex,
+                      meals: day.meals,
+                    )
+                  ));
+                },
               ),
-              
-              Divider(),
-              
-              // Meals List
-              Expanded(
-                child: day.meals.isEmpty 
-                  ? Center(
-                      child: Column(
+              SizedBox(height: 10),
+              // زر إضافة وجبة
+              FloatingActionButton(
+                heroTag: 'add_meal',
+                child: Icon(Icons.add),
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(
+                    builder: (_) => AddMealPage(dayIndex: dayIndex)
+                  ));
+                },
+              ),
+            ],
+          ),
+          body: SingleChildScrollView(
+            child: Column(
+              children: [
+                // Water Tracker
+                Container(
+                  margin: EdgeInsets.all(16),
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.blue[50],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Text('Water Tracker 💧', style: TextStyle(
+                        fontSize: 20, 
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[700]
+                      )),
+                      SizedBox(height: 10),
+                      Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.restaurant, size: 60, color: Colors.grey),
-                          SizedBox(height: 16),
-                          Text(
-                            'No meals added yet!',
-                            style: TextStyle(fontSize: 18, color: Colors.grey),
+                          IconButton(
+                            icon: Icon(Icons.remove_circle, color: Colors.blue),
+                            onPressed: () {
+                              if (day.waterCups > 0) cubit.updateWater(dayIndex, day.waterCups - 1);
+                            },
                           ),
-                          Text(
-                            'Tap + to add your first meal',
-                            style: TextStyle(color: Colors.grey),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text('${day.waterCups} cups', style: TextStyle(
+                              fontSize: 18, 
+                              fontWeight: FontWeight.bold
+                            )),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.add_circle, color: Colors.blue),
+                            onPressed: () {
+                              cubit.updateWater(dayIndex, day.waterCups + 1);
+                            },
                           ),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      itemCount: day.meals.length,
-                      itemBuilder: (context, index) {
-                        final meal = day.meals[index];
-                        return Card(
-                          margin: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          child: ListTile(
-                            leading: Container(
-                              padding: EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: meal.type == 'main' ? Colors.teal[100] : Colors.orange[100],
-                                borderRadius: BorderRadius.circular(8),
+                    ],
+                  ),
+                ),
+                // -------------------- DRINKS SECTION --------------------
+                Container(
+                  margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: Colors.purple[50],
+                    borderRadius: BorderRadius.circular(16),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        blurRadius: 4,
+                        offset: Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.local_drink, color: Colors.purple[700]),
+                              SizedBox(width: 8),
+                              Text(
+                                'Drinks Today ☕',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.purple[700]
+                                ),
                               ),
-                              child: Text(
-                                meal.type == 'main' ? '🍽️' : '🍎',
-                                style: TextStyle(fontSize: 16),
-                              ),
+                            ],
+                          ),
+                          ElevatedButton.icon(
+                            icon: Icon(Icons.add, size: 16),
+                            label: Text('Add Drink'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.purple,
+                              foregroundColor: Colors.white,
+                              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             ),
-                            title: Text(meal.name, style: TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(meal.details),
-                                SizedBox(height: 4),
-                                Text('⏰ ${meal.time}', style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey[600]
-                                )),
-                              ],
-                            ),
-                            trailing: PopupMenuButton(
-                              onSelected: (value) {
-                                if (value == 'edit') {
-                                  Navigator.push(context, MaterialPageRoute(
-                                    builder: (_) => EditMealPage(
-                                      dayIndex: dayIndex, 
-                                      mealIndex: index, 
-                                      meal: meal
-                                    ),
-                                  ));
-                                } else if (value == 'delete') {
+                            onPressed: () {
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => AddDrinkPage(
+                                  dayIndex: dayIndex,
+                                  meals: day.meals,
+                                )
+                              ));
+                            },
+                          ),
+                        ],
+                      ),
+                      
+                      SizedBox(height: 12),
+                      
+                      if (day.drinks.isNotEmpty) 
+                        Column(
+                          children: day.drinks.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final drink = entry.value;
+                            return Container(
+                              margin: EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                                leading: Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: drink.sugarSpoons == 0 ? Colors.green[100] : 
+                                           drink.sugarSpoons <= 2 ? Colors.orange[100] : Colors.red[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.local_drink,
+                                    color: drink.sugarSpoons == 0 ? Colors.green : 
+                                           drink.sugarSpoons <= 2 ? Colors.orange : Colors.red,
+                                    size: 20,
+                                  ),
+                                ),
+                                title: Text(
+                                  drink.name,
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('${drink.sugarSpoons} sugar spoon${drink.sugarSpoons == 1 ? '' : 's'} 🥄'),
+                                    if (drink.afterMeal != null)
+                                      Text(
+                                        'After ${drink.afterMeal}',
+                                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                      ),
+                                  ],
+                                ),
+                                trailing: Text(
+                                  drink.time,
+                                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                                ),
+                                onTap: () {
+                                  // ممكن نضيف تعديل للمشروب في المستقبل
+                                },
+                                onLongPress: () {
                                   showDialog(
                                     context: context,
                                     builder: (context) => AlertDialog(
-                                      title: Text('Delete Meal?'),
-                                      content: Text('Are you sure you want to delete "${meal.name}"?'),
+                                      title: Text('Delete Drink?'),
+                                      content: Text('Are you sure you want to delete "${drink.name}"?'),
                                       actions: [
                                         TextButton(
                                           onPressed: () => Navigator.pop(context),
@@ -399,7 +481,7 @@ class DayDetailsPage extends StatelessWidget {
                                         ),
                                         TextButton(
                                           onPressed: () {
-                                            cubit.deleteMeal(dayIndex, index);
+                                            cubit.deleteDrink(dayIndex, index);
                                             Navigator.pop(context);
                                           },
                                           child: Text('Delete', style: TextStyle(color: Colors.red)),
@@ -407,19 +489,152 @@ class DayDetailsPage extends StatelessWidget {
                                       ],
                                     ),
                                   );
-                                }
-                              },
-                              itemBuilder: (context) => [
-                                PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                PopupMenuItem(value: 'delete', child: Text('Delete')),
-                              ],
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        )
+                      else 
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 20),
+                          child: Column(
+                            children: [
+                              Icon(Icons.local_drink, size: 40, color: Colors.grey[400]),
+                              SizedBox(height: 8),
+                              Text(
+                                'No drinks added yet',
+                                style: TextStyle(color: Colors.grey[600]),
+                              ),
+                              Text(
+                                'Tap + to add your first drink',
+                                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+                Divider(),
+                
+                // Meals List
+                Container(
+                  margin: EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.restaurant, color: Colors.teal[700]),
+                          SizedBox(width: 8),
+                          Text(
+                            'Meals Today 🍽️',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.teal[700]
                             ),
                           ),
-                        );
-                      },
-                    ),
-              ),
-            ],
+                        ],
+                      ),
+                      SizedBox(height: 12),
+                      
+                      if (day.meals.isEmpty) 
+                        Container(
+                          padding: EdgeInsets.symmetric(vertical: 40),
+                          child: Column(
+                            children: [
+                              Icon(Icons.restaurant, size: 50, color: Colors.grey[400]),
+                              SizedBox(height: 8),
+                              Text(
+                                'No meals added yet',
+                                style: TextStyle(fontSize: 16, color: Colors.grey[600]),
+                              ),
+                              Text(
+                                'Tap + to add your first meal',
+                                style: TextStyle(color: Colors.grey[500]),
+                              ),
+                            ],
+                          ),
+                        )
+                      else 
+                        Column(
+                          children: day.meals.asMap().entries.map((entry) {
+                            final index = entry.key;
+                            final meal = entry.value;
+                            return Card(
+                              margin: EdgeInsets.symmetric(vertical: 6),
+                              child: ListTile(
+                                leading: Container(
+                                  padding: EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: meal.type == 'main' ? Colors.teal[100] : Colors.orange[100],
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    meal.type == 'main' ? '🍽️' : '🍎',
+                                    style: TextStyle(fontSize: 16),
+                                  ),
+                                ),
+                                title: Text(meal.name, style: TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(meal.details),
+                                    SizedBox(height: 4),
+                                    Text('⏰ ${meal.time}', style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey[600]
+                                    )),
+                                  ],
+                                ),
+                                trailing: PopupMenuButton(
+                                  onSelected: (value) {
+                                    if (value == 'edit') {
+                                      Navigator.push(context, MaterialPageRoute(
+                                        builder: (_) => EditMealPage(
+                                          dayIndex: dayIndex, 
+                                          mealIndex: index, 
+                                          meal: meal
+                                        ),
+                                      ));
+                                    } else if (value == 'delete') {
+                                      showDialog(
+                                        context: context,
+                                        builder: (context) => AlertDialog(
+                                          title: Text('Delete Meal?'),
+                                          content: Text('Are you sure you want to delete "${meal.name}"?'),
+                                          actions: [
+                                            TextButton(
+                                              onPressed: () => Navigator.pop(context),
+                                              child: Text('Cancel'),
+                                            ),
+                                            TextButton(
+                                              onPressed: () {
+                                                cubit.deleteMeal(dayIndex, index);
+                                                Navigator.pop(context);
+                                              },
+                                              child: Text('Delete', style: TextStyle(color: Colors.red)),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                  },
+                                  itemBuilder: (context) => [
+                                    PopupMenuItem(value: 'edit', child: Text('Edit')),
+                                    PopupMenuItem(value: 'delete', child: Text('Delete')),
+                                  ],
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -704,6 +919,201 @@ class _EditMealPageState extends State<EditMealPage> {
                 minimumSize: Size(double.infinity, 50),
               ),
               child: Text('Update Meal', style: TextStyle(fontSize: 16)),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------- ADD DRINK PAGE --------------------
+class AddDrinkPage extends StatefulWidget {
+  final int dayIndex;
+  final List<Meal> meals;
+
+  AddDrinkPage({required this.dayIndex, required this.meals});
+
+  @override
+  _AddDrinkPageState createState() => _AddDrinkPageState();
+}
+
+class _AddDrinkPageState extends State<AddDrinkPage> {
+  final nameCtrl = TextEditingController();
+  final timeCtrl = TextEditingController();
+  int sugarSpoons = 0;
+  String? selectedAfterMeal;
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: Text('Add Drink')),
+      body: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          children: [
+            TextField(
+              controller: nameCtrl,
+              decoration: InputDecoration(
+                labelText: 'Drink Name',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.local_drink),
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // عدد ملاعق السكر
+            Container(
+              padding: EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Sugar Spoons 🥄',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.remove_circle, color: Colors.red),
+                        onPressed: () {
+                          if (sugarSpoons > 0) {
+                            setState(() {
+                              sugarSpoons--;
+                            });
+                          }
+                        },
+                      ),
+                      Container(
+                        padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: sugarSpoons == 0 ? Colors.green[50] : 
+                                 sugarSpoons <= 2 ? Colors.yellow[50] : Colors.red[50],
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          '$sugarSpoons spoons',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: sugarSpoons == 0 ? Colors.green : 
+                                   sugarSpoons <= 2 ? Colors.orange : Colors.red,
+                          ),
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.add_circle, color: Colors.green),
+                        onPressed: () {
+                          setState(() {
+                            sugarSpoons++;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    sugarSpoons == 0 ? 'No sugar - Great! 👍' :
+                    sugarSpoons <= 2 ? 'Moderate sugar 👌' :
+                    'High sugar! ⚠️',
+                    style: TextStyle(
+                      color: sugarSpoons == 0 ? Colors.green : 
+                             sugarSpoons <= 2 ? Colors.orange : Colors.red,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(height: 16),
+            
+            // الوقت
+            TextField(
+              controller: timeCtrl,
+              readOnly: true,
+              decoration: InputDecoration(
+                labelText: 'Time',
+                border: OutlineInputBorder(),
+                prefixIcon: Icon(Icons.access_time),
+              ),
+              onTap: () async {
+                final time = await showTimePicker(
+                  context: context,
+                  initialTime: TimeOfDay.now(),
+                );
+                if (time != null) {
+                  setState(() {
+                    timeCtrl.text = time.format(context);
+                  });
+                }
+              },
+            ),
+            SizedBox(height: 16),
+            
+            // بعد أي وجبة
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.symmetric(horizontal: 12),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: DropdownButtonHideUnderline(
+                child: DropdownButton<String>(
+                  value: selectedAfterMeal,
+                  isExpanded: true,
+                  hint: Text('After which meal? (Optional)'),
+                  items: [
+                    DropdownMenuItem(
+                      value: null,
+                      child: Text('Not after a meal'),
+                    ),
+                    ...widget.meals.map((meal) {
+                      return DropdownMenuItem(
+                        value: meal.name,
+                        child: Text('After: ${meal.name}'),
+                      );
+                    }).toList(),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      selectedAfterMeal = value;
+                    });
+                  },
+                ),
+              ),
+            ),
+            SizedBox(height: 30),
+            
+            ElevatedButton(
+              onPressed: () {
+                if (nameCtrl.text.isEmpty || timeCtrl.text.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Please fill drink name and time')),
+                  );
+                  return;
+                }
+                
+                context.read<DayCubit>().addDrink(
+                  widget.dayIndex,
+                  Drink(
+                    name: nameCtrl.text,
+                    sugarSpoons: sugarSpoons,
+                    time: timeCtrl.text,
+                    afterMeal: selectedAfterMeal,
+                  ),
+                );
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                minimumSize: Size(double.infinity, 50),
+              ),
+              child: Text('Save Drink', style: TextStyle(fontSize: 16)),
             )
           ],
         ),
